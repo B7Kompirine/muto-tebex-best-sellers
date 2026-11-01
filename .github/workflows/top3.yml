@@ -15,7 +15,7 @@ jobs:
           python-version: "3.12"
       - run: python top3.py
         env:
-          TEBEX_SECRET: ${{ secrets.TEBEX_SECRET }}
+          TEBEX_SECRET: ${{ secrets.TEBEX }}
       - name: Değiştiyse gönder
         run: |
           git config user.name "muto-bot"
