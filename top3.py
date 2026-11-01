@@ -2,7 +2,7 @@
 # yalnız id'sini best.json'a yazar. Satış sayısı dosyaya girmez (mağazada gösterilmez).
 # Son ücretli siparişlerin paket adlarını ve maskeli oyuncu adını recent.json'a yazar (Recent Payments modülü tek ad verir).
 # Repo public: tam oyuncu adı dosyaya ve git geçmişine girmez.
-import json, os, sys, urllib.request
+import json, os, sys, urllib.error, urllib.request
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -16,8 +16,11 @@ SON_SIPARIS = 12
 def sayfa(n):
     istek = urllib.request.Request(f"{TABAN}/payments?paged=1&page={n}",
                                    headers={"X-Tebex-Secret": ANAHTAR, "User-Agent": "muto-best-sellers"})
-    with urllib.request.urlopen(istek, timeout=30) as y:
-        return json.load(y)
+    try:
+        with urllib.request.urlopen(istek, timeout=30) as y:
+            return json.load(y)
+    except urllib.error.HTTPError as h:
+        sys.exit(f"Tebex {h.code}: {h.read()[:200].decode('utf-8', 'replace')}")
 
 
 def maske(ad):
