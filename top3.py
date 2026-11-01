@@ -1,5 +1,7 @@
 # Tebex Plugin API'den son 30 günün tamamlanmış, ücretli ödemelerini okur; en çok satan 3 paketin
 # yalnız id'sini best.json'a yazar. Satış sayısı dosyaya girmez (mağazada gösterilmez).
+# Son ücretli siparişlerin paket adlarını ve maskeli oyuncu adını recent.json'a yazar (Recent Payments modülü tek ad verir).
+# Repo public: tam oyuncu adı dosyaya ve git geçmişine girmez.
 import json, os, sys, urllib.request
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -8,6 +10,7 @@ TABAN = os.environ.get("TEBEX_API", "https://plugin.tebex.io")
 ANAHTAR = os.environ.get("TEBEX_SECRET", "")
 GUN = 30
 ADET = 3
+SON_SIPARIS = 12
 
 
 def sayfa(n):
@@ -15,6 +18,11 @@ def sayfa(n):
                                    headers={"X-Tebex-Secret": ANAHTAR, "User-Agent": "muto-best-sellers"})
     with urllib.request.urlopen(istek, timeout=30) as y:
         return json.load(y)
+
+
+def maske(ad):
+    # sabit uzunluk: ad uzunluğu da sızmaz
+    return ad[:1] + "***" if ad else ""
 
 
 def tarih(s):
@@ -26,7 +34,7 @@ def main():
     if not ANAHTAR:
         sys.exit("TEBEX_SECRET yok")
     sinir = datetime.now(timezone.utc) - timedelta(days=GUN)
-    sayac, son = Counter(), {}
+    sayac, son, siparisler = Counter(), {}, []
     n = 1
     while True:
         j = sayfa(n)
@@ -39,6 +47,9 @@ def main():
                 continue
             if str(p.get("status", "")).lower() != "complete" or float(p.get("amount") or 0) <= 0:
                 continue
+            if len(siparisler) < SON_SIPARIS:
+                siparisler.append({"n": maske((p.get("player") or {}).get("name")),
+                                   "p": [pk["name"] for pk in p.get("packages", [])]})
             for pk in p.get("packages", []):
                 sayac[pk["id"]] += 1
                 son[pk["id"]] = max(son.get(pk["id"], t), t)
@@ -51,7 +62,10 @@ def main():
     with open("best.json", "w", encoding="utf-8") as f:
         json.dump({"ids": sira}, f)
         f.write("\n")
-    print("ids:", sira)
+    with open("recent.json", "w", encoding="utf-8") as f:
+        json.dump({"items": siparisler}, f, ensure_ascii=False)
+        f.write("\n")
+    print("ids:", sira, "siparis:", len(siparisler))
 
 
 if __name__ == "__main__":
